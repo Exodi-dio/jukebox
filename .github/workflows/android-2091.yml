@@ -21,6 +21,7 @@ jobs:
           sdk: "nightly"
           target: ${{ matrix.target }}
           build-config: Release
+          combine: true
 
   package:
     name: Package
