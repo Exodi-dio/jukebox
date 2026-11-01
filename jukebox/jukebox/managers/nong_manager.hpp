@@ -9,8 +9,6 @@
 #include <Geode/loader/Log.hpp>
 #include <Geode/loader/Mod.hpp>
 #include <Geode/utils/file.hpp>
-#include <asp/fs.hpp>
-#include <asp/fs/std.hpp>  // IWYU pragma: keep
 
 #include "jukebox/nong/nong.hpp"
 
@@ -26,8 +24,8 @@ protected:
     void setupManifestPath() {
         const std::filesystem::path path = this->baseManifestPath();
 
-        if (!asp::fs::exists(asp::fs::Path::fromStdPath(path))) {
-            auto createDirRes = geode::utils::file::createDirectory(asp::fs::Path::fromStdPath(path));
+        if (!std::filesystem::exists(path)) {
+            auto createDirRes = geode::utils::file::createDirectory(path);
             if (createDirRes.isErr()) {
                 geode::log::error("Failed to create manifest path {}: {}", path, createDirRes.unwrapErr());
             }

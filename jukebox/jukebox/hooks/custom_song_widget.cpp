@@ -29,9 +29,6 @@
 #include <Geode/ui/SimpleAxisLayout.hpp>
 #include <Geode/utils/async.hpp>
 #include <Geode/utils/cocos.hpp>
-#include <asp/fs/Path.hpp>
-#include <asp/fs/fs.hpp>
-#include <asp/fs/std.hpp>  // IWYU pragma: keep
 #include <fmt/format.h>
 
 #include "jukebox/events/indexes_loaded.hpp"
@@ -117,7 +114,7 @@ class $modify(JBSongWidget, CustomSongWidget) {
         this->adjustSongInfoObject(songInfo);
         if (!CustomSongWidget::init(
                 songInfo, songDelegate, showSongSelect, showPlayMusic, showDownload, isRobtopSong, unk, isMusicLibrary,
-                unkInt, showFavorite, showUsage
+                unkInt
             )) {
             return false;
         }
@@ -171,7 +168,7 @@ class $modify(JBSongWidget, CustomSongWidget) {
             if (!optPath) {
                 found->second = false;
             } else {
-                found->second = asp::fs::exists(asp::fs::Path::fromStdPath(std::move(optPath).value()));
+                found->second = std::filesystem::exists(std::move(optPath).value());
             }
         }
     }
@@ -449,7 +446,7 @@ class $modify(JBSongWidget, CustomSongWidget) {
         const std::filesystem::path activePath = std::move(activePathOpt).value();
 
         std::string sizeText;
-        if (asp::fs::exists(asp::fs::Path::fromStdPath(activePath))) {
+        if (std::filesystem::exists(activePath)) {
             sizeText = NongManager::get().getFormattedSize(activePath);
         } else if (m_songInfoObject) {
             sizeText = fmt::format("{:.2f}MB", m_songInfoObject->m_fileSize);

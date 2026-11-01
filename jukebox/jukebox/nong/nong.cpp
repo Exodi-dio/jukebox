@@ -16,9 +16,6 @@
 #include <Geode/utils/general.hpp>
 #include <arc/future/Future.hpp>
 #include <arc/util/Result.hpp>
-#include <asp/fs/Path.hpp>
-#include <asp/fs/fs.hpp>
-#include <asp/fs/std.hpp>  // IWYU pragma: keep
 #include <fmt/format.h>
 #include <matjson.hpp>
 
@@ -135,7 +132,7 @@ public:
     [[nodiscard]] std::string youtubeID() const { return m_youtubeID; }
     [[nodiscard]] std::optional<std::string> indexID() const { return m_indexID; }
     Future<Result<ByteVector>> startDownload() const {
-        if (m_path.has_value() && asp::fs::exists(asp::fs::Path::fromStdPath(m_path.value()))) {
+        if (m_path.has_value() && std::filesystem::exists(m_path.value())) {
             co_return Err("Song is already downloaded");
         }
 
@@ -219,7 +216,7 @@ public:
     [[nodiscard]] std::optional<std::string> indexID() const noexcept { return m_indexID; }
     [[nodiscard]] std::optional<std::filesystem::path> path() const noexcept { return m_path; }
     Future<Result<ByteVector>> startDownload() const {
-        if (m_path.has_value() && asp::fs::exists(asp::fs::Path::fromStdPath(m_path.value()))) {
+        if (m_path.has_value() && std::filesystem::exists(m_path.value())) {
             co_return Err("Song is already downloaded");
         }
 
@@ -275,11 +272,9 @@ private:
     std::vector<IndexSongMetadata*> m_indexSongs;
 
     void deletePath(const std::optional<std::filesystem::path>& path) {
-        if (path.has_value() && asp::fs::exists(asp::fs::Path::fromStdPath(path.value()))) {
-            auto removeRes = asp::fs::remove(asp::fs::Path::fromStdPath(path.value()));
-            if (removeRes.isErr()) {
-                auto err = removeRes.unwrapErr();
-                log::error("Couldn't delete NONG: {}", err);
+        if (path.has_value() && std::filesystem::exists(path.value())) {
+            if (!std::filesystem::remove(path.value())) {
+                log::error("Couldn't delete NONG: {}", path.value());
             }
         }
     }
@@ -295,11 +290,9 @@ public:
 
         // Don't save manifest for songs with no nongs
         if (m_locals.empty() && m_youtube.empty() && m_hosted.empty()) {
-            if (asp::fs::exists(asp::fs::Path::fromStdPath(path))) {
-                auto removeRes = asp::fs::remove(asp::fs::Path::fromStdPath(path));
-                if (removeRes.isErr()) {
-                    auto err = removeRes.unwrapErr();
-                    return Err("Failed to remove file: {}", err);
+            if (std::filesystem::exists(path)) {
+                if (!std::filesystem::remove(path)) {
+                    return Err("Failed to remove file: {}", path);
                 }
             }
 
@@ -309,7 +302,7 @@ public:
         matjson::Value json = matjson::Serialize<Nongs>::toJson(*self);
 
         auto writeRes =
-            geode::utils::file::writeString(asp::fs::Path::fromStdPath(path), json.dump(matjson::NO_INDENTATION));
+            geode::utils::file::writeString(path.string(), json.dump(matjson::NO_INDENTATION));
         if (writeRes.isErr()) { return Err("Couldn't write manifest: {}", writeRes.unwrapErr()); }
 
         return Ok();
@@ -320,7 +313,7 @@ public:
 
         if (IS_DEFAULT) { return Ok(); }
 
-        if (!asp::fs::exists(asp::fs::Path::fromStdPath(path))) { return Err("Song doesn't exist on disk"); }
+        if (!std::filesystem::exists(path)) { return Err("Song doesn't exist on disk"); }
 
         return Ok();
     }

@@ -31,9 +31,6 @@
 #include <Geode/utils/cocos.hpp>
 #include <Geode/utils/function.hpp>
 #include <Geode/utils/string.hpp>
-#include <asp/fs/Path.hpp>
-#include <asp/fs/fs.hpp>
-#include <asp/fs/std.hpp>  // IWYU pragma: keep
 #include <asp/iter/std.hpp>
 #include <fmt/core.h>
 #include <fmt/format.h>
@@ -228,9 +225,9 @@ void NongList::build() {
             };
 
             bool aVerified =
-                asp::iter::from(verifiedNongs).any([a](auto const& i) { return i == a->metadata()->uniqueID; });
+                asp::iter::from(verifiedNongs).any([a](auto const& i) { return i.get() == a->metadata()->uniqueID; });
             bool bVerified =
-                asp::iter::from(verifiedNongs).any([b](auto const& i) { return i == b->metadata()->uniqueID; });
+                asp::iter::from(verifiedNongs).any([b](auto const& i) { return i.get() == b->metadata()->uniqueID; });
 
             // Sort by Verified
             if (aVerified != bVerified) { return aVerified; }
@@ -352,7 +349,7 @@ void NongList::addSongToList(Song* nong, Nongs* parent, bool liveInsert) {
     std::string uniqueID = nong->metadata()->uniqueID;
     std::optional<std::filesystem::path> path = nong->path();
     bool isFromIndex = nong->indexID().has_value();
-    bool isDownloaded = path.has_value() && asp::fs::exists(asp::fs::Path::fromStdPath(path.value()));
+    bool isDownloaded = path.has_value() && std::filesystem::exists(path.value());
     NongCell* cell = NongCell::create(id, uniqueID, itemSize, m_levelID, std::nullopt);
     cell->setID(uniqueID);
 

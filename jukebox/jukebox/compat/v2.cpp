@@ -13,9 +13,6 @@
 #include <Geode/loader/Mod.hpp>
 #include <Geode/utils/file.hpp>
 #include <Geode/utils/general.hpp>
-#include <asp/fs/Path.hpp>
-#include <asp/fs/fs.hpp>
-#include <asp/fs/std.hpp>  // IWYU pragma: keep
 #include <fmt/format.h>
 #include <matjson.hpp>
 
@@ -32,7 +29,7 @@ static bool isSongValid(const matjson::Value& s) {
            s["authorName"].isString() && s.contains("path") && s["path"].isString();
 }
 
-bool manifestExists() { return asp::fs::exists(asp::fs::Path::fromStdPath(manifestPath())); }
+bool manifestExists() { return std::filesystem::exists(manifestPath()); }
 
 std::filesystem::path manifestPath() {
     return std::filesystem::path(Mod::get()->getSaveDir().native()) / "nong_data.json";
@@ -43,41 +40,40 @@ Result<> backupManifest(bool deleteOrig) {
 
     const std::filesystem::path backupDir =
         std::filesystem::path(Mod::get()->getSaveDir().native()) / ".v2-compat-backup";
-    bool exists = asp::fs::exists(asp::fs::Path::fromStdPath(backupDir));
-    bool isDir = asp::fs::Path::fromStdPath(backupDir).isDir();
+    bool exists = std::filesystem::exists(backupDir);
+    bool isDir = std::filesystem::is_directory(backupDir);
 
     if (exists && !isDir) {
-        GEODE_UNWRAP(asp::fs::removeFile(asp::fs::Path::fromStdPath(backupDir)).mapErr([backupDir](const auto& err) {
-            return fmt::format("Failed to remove conflicting backup path {}: {}", backupDir, err);
-        }));
+        if (!std::filesystem::remove(backupDir)) {
+            return Err(fmt::format("Failed to remove conflicting backup path {}", backupDir));
+        }
         exists = false;
     }
 
     if (!exists) {
-        GEODE_UNWRAP(asp::fs::createDirAll(asp::fs::Path::fromStdPath(backupDir)).mapErr([backupDir](const auto& err) {
-            return fmt::format("Failed to create backup directory {}: {}", backupDir, err);
-        }));
+        if (!std::filesystem::create_directories(backupDir)) {
+            return Err(fmt::format("Failed to create backup directory {}", backupDir));
+        }
     }
 
     const std::filesystem::path filepath = backupDir / "nong_data.json";
-    if (asp::fs::exists(asp::fs::Path::fromStdPath(filepath))) {
-        GEODE_UNWRAP(asp::fs::remove(asp::fs::Path::fromStdPath(filepath)).mapErr([filepath](const auto& err) {
-            return fmt::format("Failed to replace backup file {}: {}", filepath, err);
-        }));
+    if (std::filesystem::exists(filepath)) {
+        if (!std::filesystem::remove(filepath)) {
+            return Err(fmt::format("Failed to replace backup file {}", filepath));
+        }
     }
 
-    GEODE_UNWRAP(
-        asp::fs::copy(asp::fs::Path::fromStdPath(manifestPath()), asp::fs::Path::fromStdPath(filepath))
-            .mapErr([filepath](const auto& err) {
-                return fmt::format("Failed to write backup file {}: {}", filepath, err);
-            })
-    );
+    std::error_code ec;
+    std::filesystem::copy(manifestPath(), filepath, ec);
+    if (ec) {
+        return Err(fmt::format("Failed to write backup file {}: {}", filepath, ec.message()));
+    }
 
     if (deleteOrig) {
         const auto sourcePath = manifestPath();
-        GEODE_UNWRAP(asp::fs::remove(asp::fs::Path::fromStdPath(sourcePath)).mapErr([sourcePath](const auto& err) {
-            return fmt::format("Failed to delete original v2 manifest {}: {}", sourcePath, err);
-        }));
+        if (!std::filesystem::remove(sourcePath)) {
+            return Err(fmt::format("Failed to delete original v2 manifest {}", sourcePath));
+        }
     }
 
     return Ok();
@@ -142,7 +138,7 @@ Result<std::unordered_map<int, CompatManifest>> parseManifest() {
     std::filesystem::path path = manifestPath();
 
     GEODE_UNWRAP_INTO(
-        matjson::Value json, geode::utils::file::readJson(asp::fs::Path::fromStdPath(path)).mapErr([](std::string err) {
+        matjson::Value json, geode::utils::file::readJson(path).mapErr([](std::string err) {
             return fmt::format("Couldn't parse JSON from file: {}", err);
         })
     );

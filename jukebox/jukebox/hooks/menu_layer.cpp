@@ -6,7 +6,6 @@
 #include <Geode/loader/Mod.hpp>
 #include <Geode/modify/MenuLayer.hpp>  // IWYU pragma: keep
 #include <Geode/modify/Modify.hpp>
-#include <asp/fs/std.hpp>  // IWYU pragma: keep
 #include <fmt/core.h>
 #include <fmt/format.h>
 

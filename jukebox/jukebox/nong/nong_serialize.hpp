@@ -7,7 +7,6 @@
 #include <Geode/Result.hpp>
 #include <Geode/loader/Log.hpp>
 #include <Geode/utils/file.hpp>  // IWYU pragma: keep
-#include <asp/fs/std.hpp>        // IWYU pragma: keep
 #include <fmt/core.h>
 #include <matjson.hpp>
 
@@ -53,9 +52,10 @@ struct matjson::Serialize<jukebox::LocalSong> {
             return geode::Err("Local Song {} is invalid. Reason: invalid path", value.dump(matjson::NO_INDENTATION));
         }
 
-        GEODE_UNWRAP_INTO(auto path, value["path"].as<asp::fs::Path>());
+        GEODE_UNWRAP_INTO(auto pathStr, value["path"].asString());
+        auto path = std::filesystem::path(pathStr);
 
-        return geode::Ok(jukebox::LocalSong {std::move(metadata), path.native()});
+        return geode::Ok(jukebox::LocalSong {std::move(metadata), path});
     }
 
     static matjson::Value toJson(const jukebox::LocalSong& value) {
@@ -63,8 +63,8 @@ struct matjson::Serialize<jukebox::LocalSong> {
             {"name", value.metadata()->name},
             {"unique_id", value.metadata()->uniqueID},
             {"artist", value.metadata()->artist},
-            {"filename", asp::fs::Path::fromStdPath(value.path()->filename())},
-            {"path", asp::fs::Path::fromStdPath(value.path().value())},
+            {"filename", value.path()->filename().string()},
+            {"path", value.path().value().string()},
             {"offset", value.metadata()->startOffset},
         });
         if (value.metadata()->level.has_value()) { ret["level"] = value.metadata()->level.value(); }
@@ -92,13 +92,14 @@ struct matjson::Serialize<jukebox::YTSong> {
             );
         }
 
-        GEODE_UNWRAP_INTO(auto path, value["path"].as<asp::fs::Path>());
+        GEODE_UNWRAP_INTO(auto pathStr, value["path"].asString());
+        auto path = std::filesystem::path(pathStr);
 
         return geode::Ok(
             jukebox::YTSong {
                 std::move(metadata), value["youtube_id"].asString().unwrap(),
                 value["index_id"].asString().map([](auto i) { return std::optional(i); }).unwrapOr(std::nullopt),
-                path.native()
+                path.string()
             }
         );
     }
@@ -108,7 +109,7 @@ struct matjson::Serialize<jukebox::YTSong> {
             {"name", value.metadata()->name},
             {"unique_id", value.metadata()->uniqueID},
             {"artist", value.metadata()->artist},
-            {"path", asp::fs::Path::fromStdPath(value.path().value())},
+            {"path", value.path().value().string()},
             {"offset", value.metadata()->startOffset},
             {"youtube_id", value.youtubeID()},
         });
@@ -148,13 +149,14 @@ struct matjson::Serialize<jukebox::HostedSong> {
             return geode::Err("Hosted song {} is invalid. Reason: invalid path", value.dump(matjson::NO_INDENTATION));
         }
 
-        GEODE_UNWRAP_INTO(auto path, value["path"].as<asp::fs::Path>());
+        GEODE_UNWRAP_INTO(auto pathStr, value["path"].asString());
+        auto path = std::filesystem::path(pathStr);
 
         return geode::Ok(
             jukebox::HostedSong {
                 std::move(metadata), value["url"].asString().unwrap(),
                 value["index_id"].asString().map([](auto i) { return std::optional(i); }).unwrapOr(std::nullopt),
-                path.native()
+                path
             }
         );
     }
@@ -164,8 +166,8 @@ struct matjson::Serialize<jukebox::HostedSong> {
             {"name", value.metadata()->name},
             {"unique_id", value.metadata()->uniqueID},
             {"artist", value.metadata()->artist},
-            {"path", asp::fs::Path::fromStdPath(value.path().value())},
-            {"filename", asp::fs::Path::fromStdPath(value.path()->filename())},
+            {"path", value.path().value().string()},
+            {"filename", value.path()->filename().string()},
             {"offset", value.metadata()->startOffset},
             {"url", value.url()},
         });
